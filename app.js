@@ -7,7 +7,7 @@ var routes = require('./routes');
 const connection = require('./config/database');
 
 // Package documentation - https://www.npmjs.com/package/connect-mongo
-const MongoStore = require('connect-mongo')(session);
+const MongoStore = require('connect-mongo');
 
 /**
  * -------------- GENERAL SETUP ----------------
@@ -20,24 +20,42 @@ require('dotenv').config();
 var app = express();
 
 app.use(express.json());
-app.use(express.urlencoded({extended: true}));
-
+app.use(express.urlencoded({ extended: true }));
 
 /**
  * -------------- SESSION SETUP ----------------
  */
 
-const sessionStore = new MongoStore({ mongooseConnection: connection, collection: 'sessions' });
+const dbString = 'mongodb://localhost:27017/tutorial_db';
+const sessionStore = MongoStore.create({
+  mongoUrl: dbString,
+  dbName: 'tutorial_db',
+  collectionName: 'sessions',
+});
 
-app.use(session({
+// app.use(
+//   session({
+//     secret: process.env.SECRET,
+//     resave: false,
+//     saveUninitialized: true,
+//     store: sessionStore,
+//     cookie: {
+//       maxAge: 1000 * 60 * 60 * 24, // Equals 1 day (1 day * 24 hr/1 day * 60 min/1 hr * 60 sec/1 min * 1000 ms / 1 sec)
+//     },
+//   })
+// );
+
+app.use(
+  session({
     secret: process.env.SECRET,
-    resave: false,
-    saveUninitialized: true,
-    store: sessionStore,
+    saveUninitialized: false,
+    resave: true,
+    rolling: true,
     cookie: {
-        maxAge: 1000 * 60 * 60 * 24 // Equals 1 day (1 day * 24 hr/1 day * 60 min/1 hr * 60 sec/1 min * 1000 ms / 1 sec)
-    }
-}));
+      expires: 5 * 1000, // 5 seconds
+    },
+  })
+);
 
 /**
  * -------------- PASSPORT AUTHENTICATION ----------------
@@ -50,9 +68,9 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use((req, res, next) => {
-    console.log(req.session);
-    console.log(req.user);
-    next();
+  console.log(req.session);
+  console.log(req.user);
+  next();
 });
 
 /**
@@ -61,7 +79,6 @@ app.use((req, res, next) => {
 
 // Imports all of the routes from ./routes/index.js
 app.use(routes);
-
 
 /**
  * -------------- SERVER ----------------
